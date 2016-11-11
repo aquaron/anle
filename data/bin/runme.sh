@@ -157,10 +157,10 @@ run_certbot() {
     certbot certonly \
         --webroot \
         --webroot-path ${_datadir}/html \
+        --config-dir ${_datadir}/letsencrypt \
         --no-self-upgrade \
         --agree-tos \
         --email ${_email} \
-        --register-unsafely-without-email \
         --manual-public-ip-logging-ok \
         --non-interactive \
         --keep \
