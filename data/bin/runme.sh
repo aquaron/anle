@@ -10,10 +10,10 @@ if [ ! "${_vol}" ]; then
     exit 1
 fi
 
-_run="docker run -it --rm -v ${_vol}:/data ${_ports} aquaron/anle"
+_run="docker run -t --rm -v ${_vol}:/data ${_ports} aquaron/anle"
 
 HELP=`cat <<EOT
-Usage: docker run -it --rm -v <local-dir>:/data ${_ports} aquaron/anle <command> <host> [<email>]
+Usage: docker run -t --rm -v <local-dir>:/data ${_ports} aquaron/anle <command> <host> [<email>]
 
  <local-dir> - directory on the host system to map to container
 
