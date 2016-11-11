@@ -240,7 +240,7 @@ case "${_cmd}" in
         ;;
 
     daemon)
-        stopped_assert
+        rm -f ${_datadir}/log/nginx.pid
         conf_assert
         $_nginx -g 'daemon off;'
         ;;
