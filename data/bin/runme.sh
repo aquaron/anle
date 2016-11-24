@@ -86,23 +86,42 @@ write_443_conf() {
 
     server {
         listen                       443 ssl;
-
         server_name                  ${_hostname};
-
         ssl_certificate              /data/letsencrypt/live/${_hostname}/fullchain.pem;
         ssl_certificate_key          /data/letsencrypt/live/${_hostname}/privkey.pem;
- 
         location / {
             proxy_pass               http://hosts\$request_uri;
         }
- 
         root                         /data/html;
-
-        location = /50x.html {
-            root                     /data/html;
-        }
     }
     " > ${_filename}
+}
+
+write_systemd_file() {
+    local _name="$1"
+    local _map="$2"
+    local _port="$3"
+
+    local _service_file="${_etc}/docker-${_name}.service"
+    local _script="${_etc}/install-systemd.sh"
+
+	apk --no-cache add bash
+
+    cat ${_datadir}/templ/systemd.service \
+        | write_template.sh name \""${_name}"\" map \""${_map}"\" port \""${_port}"\" \
+        > ${_service_file}
+
+    echo "Created ${_service_file}"
+
+    cat ${_datadir}/templ/install.sh \
+        | write_template.sh name \""${_name}"\" \
+        > ${_script}
+
+    chmod 755 ${_script}
+
+    echo "Created ${_script}"
+
+	apk del bash
 }
 
 write_test_conf() {
@@ -209,6 +228,8 @@ case "${_cmd}" in
 
         echo "Writing configuration..."
         write_test_conf "${_confdir}/test.conf" ${_host}
+
+        write_systemd_file "anle" "${_vol}:/data" "${_ports}" 
 
         echo "Test configuration..."
         $_nginx -t
