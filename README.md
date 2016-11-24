@@ -105,7 +105,7 @@ Initialize the configurations and get the certificate:
 Edit `<local-dir>/etc/conf.d/443.conf` and change
 configuration for `upstream` hosts to match your virtual hosts settings.
 
-### `install.sh`
+### `install-systemd.sh`
 
 Installs `docker-anle.service` to your `systemd` configuration.
 Find this script in your `<local-dir>/etc` directory.
@@ -114,7 +114,7 @@ Find this script in your `<local-dir>/etc` directory.
 
 ### Using `systemctl`
 
-If you've used the `install.sh` script, you can issue these commands
+If you've used the `install-systemd.sh` script, you can issue these commands
 to start/stop your service:
 
     systemctl start docker-anle.service

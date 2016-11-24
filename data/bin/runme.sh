@@ -234,7 +234,7 @@ case "${_cmd}" in
         write_test_conf "${_confdir}/test.conf" ${_host}
 
         echo "Writing startup script..."
-        write_systemd_file "anle" "${_vol}:/data" "${_ports}" 
+        write_systemd_file "anle" "-v ${_vol}:/data" "${_ports}" 
 
         echo "Test configuration..."
         $_nginx -t
