@@ -71,7 +71,7 @@ run_init() {
 
     cp -R /data-default/. /data/
     cp /etc/nginx/mime.types /data/etc/
-	mkdir /data/log
+    mkdir /data/log
     ln -s /data/letsencrypt /etc/letsencrypt
     rm -r /data/bin /data/templ
     fi
@@ -86,7 +86,7 @@ write_443_conf() {
     }
 
     server {
-        listen                       443 ssl;
+		listen                       443 ssl;
         server_name                  ${_hostname};
         ssl_certificate              /data/letsencrypt/live/${_hostname}/fullchain.pem;
         ssl_certificate_key          /data/letsencrypt/live/${_hostname}/privkey.pem;
@@ -102,14 +102,14 @@ write_systemd_file() {
     local _name="$1"
     local _map="$2"
     local _port="$3"
-	local _etc="${_datadir}/etc"
+    local _etc="${_datadir}/etc"
 
     local _service_file="${_etc}/docker-${_name}.service"
     local _script="${_etc}/install-systemd.sh"
 
-	local _writer="/data-default/bin/write_template.sh"
+    local _writer="/data-default/bin/write_template.sh"
 
-	apk --no-cache add bash
+    apk --no-cache add bash
 
     cat /data-default/templ/systemd.service \
         | $_writer name \""${_name}"\" map \""${_map}"\" port \""${_port}"\" \
@@ -125,7 +125,7 @@ write_systemd_file() {
 
     echo "Created ${_script}"
 
-	apk del bash
+    apk del bash
 }
 
 write_test_conf() {
@@ -186,6 +186,7 @@ run_certbot() {
         --email ${_email} \
         --manual-public-ip-logging-ok \
         --non-interactive \
+        --must-staple \
         --keep \
         -d ${_host}
 

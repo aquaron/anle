@@ -40,6 +40,9 @@ Get or renew a certificate for the specified host:
 
     runme.sh certbot virtual-host.example.com certs@example.com
 
+You can also use the script `get-cert.sh` located in the `etc` directory to
+generate new LE certificates.
+
 ### `start`, `stop`, `quit`, `kill`
 
 These are convenience commands when you're inside the running container use for
@@ -64,8 +67,10 @@ When you change configurations, reload and test it.
     |   +-- /conf.d
     |       |
     |       +-- proxy.conf  (default)
+    |       +-- mime.types  (auto generated)
     |       +-- 80.conf     (auto generated)
     |       +-- 443.conf    (auto generated, edit REQUIRED)
+    |       +-- get-cert.sh (re/new certificate for a host)
     |    
     +-- /html               (root)
     |   |
