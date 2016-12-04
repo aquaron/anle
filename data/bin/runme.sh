@@ -81,21 +81,22 @@ write_443_conf() {
     local _filename=$1
     local _hostname=$2
     echo "
+    root                            /data/html;
     upstream hosts {
-        server 172.17.0.1:9991;
+        server                      172.17.0.1:9991;
     }
 
     server {
-        listen                       443 ssl;
-        server_name                  ${_hostname};
-        ssl_certificate              /data/letsencrypt/live/${_hostname}/fullchain.pem;
-        ssl_certificate_key          /data/letsencrypt/live/${_hostname}/privkey.pem;
+        listen                      443 ssl;
+        server_name                 ${_hostname};
+        ssl_certificate             /data/letsencrypt/live/${_hostname}/fullchain.pem;
+        ssl_certificate_key         /data/letsencrypt/live/${_hostname}/privkey.pem;
         location / {
-            proxy_pass               http://hosts\$request_uri;
+            proxy_pass              http://hosts\$request_uri;
         }
-        root                         /data/html;
-    }
-    " > ${_filename}
+        add_header                  Strict-Transport-Security
+                                    'max-age=15768000; includeSubDomains; preload';
+    }" > ${_filename}
 }
 
 write_systemd_file() {
@@ -141,8 +142,10 @@ write_80_conf() {
     local _filename=$1
     echo "
     server {
-        listen      80;
-        return      301         https://\$host\$request_uri;
+        listen          80          default_server;
+        listen          [::]:80     default_server ipv6only=on;
+        server_name     _;
+        return          301         https://\$host\$request_uri;
     }" > ${_filename}
 }
 
