@@ -82,6 +82,7 @@ function check_server() {
         hint "https://${_hostname} is up and running"
     else
         hint "Cannot reach https://${_hostname}"
+        exit 1
     fi
 }
 
@@ -133,21 +134,24 @@ echo "Found: ${_ledir} OK"
 
 if [ -d "${_ledir}/live/${_domain}" ]; then
     echo "Found: $(bd ${_domain}) ... renewing"
+else
+    _email="$3"
+    if [ ! "${_email}" ]; then
+        read -p "Admin email: " _email
+    fi
 fi
 
 stop_server "${_domain}"
-
-_email="$3"
-
-if [ ! "${_email}" ]; then
-    read -p "Admin email: " _email
-fi
 
 echo "Running certbot client..."
 
 _args=$(grep 'ExecStart=' /etc/systemd/system/docker-anle.service | sed -e 's/^[^:]*://')
 
-_res=$(docker run --rm -t -v ${_npath}:${_args} init ${_domain} ${_email})
+if [ ! "${_email}" ]; then
+    _res=$(docker run --rm -t -v ${_npath}:${_args} renew)
+else 
+    _res=$(docker run --rm -t -v ${_npath}:${_args} init ${_domain} ${_email})
+fi
 
 case ${_res} in
     *'no action taken'*)
@@ -174,4 +178,6 @@ esac
 
 check_server "${_domain}" "${_npath}"
 
-exit 1
+chown -R paul ${_ledir}
+
+exit 0

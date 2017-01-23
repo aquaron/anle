@@ -18,6 +18,7 @@ Usage: docker run -t --rm -v <local-dir>:/data ${_ports} aquaron/anle <command> 
  <local-dir> - directory on the host system to map to container
 
  <command>   init    - initialize directories if they're empty
+             renew   - create env to renew all domains on this host
              daemon  - run in non-detached mode
              test    - test nginx configuration
              start   - start nginx server
@@ -207,6 +208,26 @@ run_certbot() {
     fi
 }
 
+run_certbot_renew() {
+    certbot renew \
+        --webroot-path ${_datadir}/html \
+        --config-dir ${_datadir}/letsencrypt \
+        --non-interactive 
+
+    if [ "$?" = 1 ]; then
+        hint "Certificate FAILED"
+        echo "Check your configuration at ${_vol}/etc"
+    else
+        _443conf="${_confdir}/443.conf"
+
+        if [ ! -s "${_443conf}" ]; then
+            write_443_conf "${_443conf}" ${_host}
+            rm ${_confdir}/test.conf
+            write_80_conf "${_confdir}/80.conf"
+        fi
+    fi
+}
+
 conf_assert() {
     if [ ! -s "${_conffile}" ]; then
         hint "Server not setup"
@@ -221,10 +242,11 @@ assert_ok() {
 }
 
 case "${_cmd}" in
-    init)
+    init | renew)
         run_init
 
-        host_assert
+        if [ "${_cmd}" = 'init' ]; then host_assert; fi
+
         stopped_assert
 
         if [ -s "${_confdir}/443.conf" ]; then
@@ -251,7 +273,11 @@ case "${_cmd}" in
         assert_ok
 
         echo "Getting LE certificate..."
-        run_certbot
+        if [ "${_cmd}" = 'init' ]; then
+            run_certbot
+        else
+            run_certbot_renew
+        fi
 
         hint "${_start}"
         ;;
