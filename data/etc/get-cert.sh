@@ -154,7 +154,8 @@ else
 fi
 
 case ${_res} in
-    *'no action taken'*)
+    *'no action taken'*|\
+    *'No renewals were attempted'*)
         echo "Ignore: no new certificates!"
         rm -r ${_npath}
         ;;
