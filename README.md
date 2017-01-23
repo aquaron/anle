@@ -10,6 +10,7 @@ Launches `nginx` by default. If configuration is not found, initializes with def
 | Command   | Description                                      |
 | --------- | ------------------------------------------------ |
 | init      | initialize directories if they're empty          |
+| renew     | similar to `init` but renews certs instead       |
 | daemon    | run in non-detached mode                         |
 | certbot   | create/renew certificate                         |
 | start     | start `nginx` server                             |
@@ -29,6 +30,12 @@ Example:
 
 `virtual-host.example.com` is the target to get Let's Encrypt certificate for.
 `certs@example.com` is your email address required by LE.
+
+### `renew`
+
+Renewing certificates by initializing with renewal instead of creating new certs:
+
+    runme.sh renew
 
 ### `daemon`
 
