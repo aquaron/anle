@@ -88,7 +88,7 @@ write_443_conf() {
     }
 
     server {
-        listen                      443 ssl;
+        listen                      443 ssl http2;
         server_name                 ${_hostname};
         ssl_certificate             /data/letsencrypt/live/${_hostname}/fullchain.pem;
         ssl_certificate_key         /data/letsencrypt/live/${_hostname}/privkey.pem;
