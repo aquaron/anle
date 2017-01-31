@@ -71,7 +71,8 @@ run_init() {
     "
 
     cp -R /data-default/. /data/
-    cp /etc/nginx/mime.types /data/etc/
+    cp /etc/nginx/mime.types /data/etc/conf.d
+    cp /etc/nginx/dhparam.pem /data/etc/conf.d
     mkdir /data/log
     ln -s /data/letsencrypt /etc/letsencrypt
     rm -r /data/bin /data/templ
@@ -191,6 +192,7 @@ run_certbot() {
         --manual-public-ip-logging-ok \
         --non-interactive \
         --must-staple \
+        --staple-ocsp \
         --keep \
         -d ${_host}
 
@@ -210,6 +212,8 @@ run_certbot() {
 
 run_certbot_renew() {
     certbot renew \
+        --must-staple \
+        --staple-ocsp \
         --webroot-path ${_datadir}/html \
         --config-dir ${_datadir}/letsencrypt \
         --non-interactive 

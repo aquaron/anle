@@ -1,0 +1,65 @@
+FROM alpine
+MAINTAINER Paul Pham <docker@aquaron.com>
+
+ENV _nginx=nginx-1.11.9 \
+    _libressl=libressl-2.5.0
+
+COPY data /data-default
+
+RUN _build_pkgs="build-base linux-headers pcre-dev zlib-dev libxslt-dev wget" \
+ _runtime_pkgs="certbot ca-certificates pcre zlib libxslt" \
+ _libressl_uri=https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/${_libressl}.tar.gz \
+ _nginx_uri=http://nginx.org/download/${_nginx}.tar.gz \
+
+ && apk add --no-cache ${_build_pkgs} ${_runtime_pkgs} \
+ && ln -s /data-default/bin/runme.sh /usr/bin \
+ && ln -s /data-default/bin/bash-prompt /root/.profile \
+ && mkdir -p /var/cache/nginx \
+ && addgroup -g 101 nginx; adduser -DHS -G nginx -u 100 nginx \
+
+ && wget ${_nginx_uri} -O - | tar xz \
+ && cd ${_nginx} \
+ && wget ${_libressl_uri} -O - | tar xz \
+
+ && ./configure \
+   --prefix=/var/lib/nginx \
+   --sbin-path=/usr/sbin/nginx \
+   --modules-path=/usr/lib/nginx/modules \
+   --conf-path=/etc/nginx/nginx.conf \
+   --pid-path=/run/nginx/nginx.pid \
+   --lock-path=/run/nginx/nginx.lock \
+   --http-client-body-temp-path=/var/cache/nginx/client_body \
+   --http-proxy-temp-path=/var/cache/nginx/proxy \
+   --http-fastcgi-temp-path=/var/cache/nginx/fastcgi \
+   --http-uwsgi-temp-path=/var/cache/nginx/uwsgi \
+   --http-scgi-temp-path=/var/cache/nginx/scgi \
+   --user=nginx \
+   --group=nginx \
+   --with-threads \
+   --with-file-aio \
+   --with-http_ssl_module \
+   --with-http_v2_module \
+   --with-http_realip_module \
+   --with-http_addition_module \
+   --with-http_sub_module \
+   --with-http_dav_module \
+   --with-http_flv_module \
+   --with-http_mp4_module \
+   --with-http_gunzip_module \
+   --with-http_gzip_static_module \
+   --with-http_auth_request_module \
+   --with-http_random_index_module \
+   --with-http_secure_link_module \
+   --with-http_slice_module \
+   --with-stream_ssl_module \
+   --with-openssl=${_libressl} \
+
+ && make -j3; make install \
+ && ${_libressl}/apps/openssl/openssl dhparam 2048 -out /etc/nginx/dhparam.pem \
+ && cd ..; rm -rf ${_nginx} \
+
+ && apk del ${_build_pkgs}
+
+VOLUME /data
+ENTRYPOINT [ "runme.sh" ]
+CMD [ "daemon" ]
