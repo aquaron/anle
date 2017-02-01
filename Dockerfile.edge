@@ -6,21 +6,27 @@ ENV _nginx=nginx-1.11.9 \
 
 COPY data /data-default
 
-RUN _build_pkgs="build-base linux-headers pcre-dev zlib-dev libxslt-dev wget" \
- _runtime_pkgs="certbot ca-certificates pcre zlib libxslt" \
+RUN GPG_KEYS=B0F4253373F8F6F510D42178520A9993A1C052F8 \
  _libressl_uri=https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/${_libressl}.tar.gz \
  _nginx_uri=http://nginx.org/download/${_nginx}.tar.gz \
 
- && apk add --no-cache ${_build_pkgs} ${_runtime_pkgs} \
+ && apk add --no-cache --virtual .build-deps \
+    gcc libc-dev make pcre-dev zlib-dev linux-headers curl gnupg libxslt-dev gd-dev wget \
  && ln -s /data-default/bin/runme.sh /usr/bin \
  && ln -s /data-default/bin/bash-prompt /root/.profile \
  && mkdir -p /var/cache/nginx \
  && addgroup -g 101 nginx; adduser -DHS -G nginx -u 100 nginx \
-
- && wget ${_nginx_uri} -O - | tar xz \
- && cd ${_nginx} \
+ && curl -fSL ${_nginx_uri} -o nginx.tar.gz \
+ && curl -fSL ${_nginx_uri}.asc  -o nginx.tar.gz.asc \
+ && export GNUPGHOME="$(mktemp -d)" \
+ && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$GPG_KEYS" \
+ && gpg --batch --verify nginx.tar.gz.asc nginx.tar.gz \
+ && rm -r "$GNUPGHOME" nginx.tar.gz.asc \
+ && mkdir -p /usr/src \
+ && tar -zxC /usr/src -f nginx.tar.gz \
+ && rm nginx.tar.gz \
+ && cd /usr/src/${_nginx} \
  && wget ${_libressl_uri} -O - | tar xz \
-
  && ./configure \
    --prefix=/var/lib/nginx \
    --sbin-path=/usr/sbin/nginx \
@@ -53,12 +59,26 @@ RUN _build_pkgs="build-base linux-headers pcre-dev zlib-dev libxslt-dev wget" \
    --with-http_slice_module \
    --with-stream_ssl_module \
    --with-openssl=${_libressl} \
-
- && make -j3; make install \
- && ${_libressl}/apps/openssl/openssl dhparam 2048 -out /etc/nginx/dhparam.pem \
- && cd ..; rm -rf ${_nginx} \
-
- && apk del ${_build_pkgs}
+ && make -j$(getconf _NPROCESSORS_ONLN) \
+ && make install \
+ && rm -rf /etc/nginx/html/ \
+ && mkdir -p /usr/share/nginx/html/ \
+ && install -m644 html/index.html /usr/share/nginx/html/ \
+ && strip /usr/sbin/nginx* \
+ && rm -rf /usr/src/${_nginx} \
+ && apk add --no-cache --virtual .gettext gettext \
+ && mv /usr/bin/envsubst /tmp/ \
+ && runDeps="$( \
+    scanelf --needed --nobanner /usr/sbin/nginx /tmp/envsubst \
+            | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+            | sort -u \
+            | xargs -r apk info --installed \
+            | sort -u \
+    )" \
+ && apk add --no-cache --virtual .nginx-rundeps $runDeps \
+ && apk del .build-deps \
+ && apk del .gettext \
+ && mv /tmp/envsubst /usr/local/bin/ 
 
 VOLUME /data
 ENTRYPOINT [ "runme.sh" ]

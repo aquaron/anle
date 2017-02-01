@@ -309,6 +309,7 @@ case "${_cmd}" in
         running_assert
         hint "${_cmd} nginx server"
         $_nginx -s ${_cmd}
+        rm -f ${_datadir}/log/nginx.pid
         ;;
 
     kill)
