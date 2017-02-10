@@ -182,6 +182,8 @@ run_certbot() {
         exit 1
     fi
 
+    apk --no-cache add certbot
+
     certbot certonly \
         --webroot \
         --webroot-path ${_datadir}/html \
@@ -208,9 +210,13 @@ run_certbot() {
             write_80_conf "${_confdir}/80.conf"
         fi
     fi
+
+    apk del certbot
 }
 
 run_certbot_renew() {
+    apk --no-cache add certbot
+
     certbot renew \
         --must-staple \
         --staple-ocsp \
@@ -230,6 +236,7 @@ run_certbot_renew() {
             write_80_conf "${_confdir}/80.conf"
         fi
     fi
+    apk del certbot
 }
 
 conf_assert() {
