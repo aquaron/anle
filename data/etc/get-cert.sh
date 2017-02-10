@@ -59,8 +59,10 @@ function update_config() {
     echo "Certificate added... OK"
     mv ${_path2}/letsencrypt ${_path1}/.
 
-    echo "Configuration added... OK"
-    tail -12 ${_path2}/etc/conf.d/443.conf | tee --append ${_path1}/etc/conf.d/443.conf
+    if [ ! "${_email}" ]; then
+        echo "Configuration added... OK"
+        tail -12 ${_path2}/etc/conf.d/443.conf | tee --append ${_path1}/etc/conf.d/443.conf
+    fi
 }
 
 function check_server() {
