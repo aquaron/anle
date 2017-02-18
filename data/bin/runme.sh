@@ -315,8 +315,8 @@ case "${_cmd}" in
     stop|quit|reload|reopen) 
         running_assert
         hint "${_cmd} nginx server"
-        $_nginx -s ${_cmd}
         rm -f ${_datadir}/log/nginx.pid
+        $_nginx -s ${_cmd}
         ;;
 
     kill)
