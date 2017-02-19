@@ -312,10 +312,16 @@ case "${_cmd}" in
         $_nginx -g 'daemon off;'
         ;;
 
-    stop|quit|reload|reopen) 
+    stop|quit) 
         running_assert
         hint "${_cmd} nginx server"
         rm -f ${_datadir}/log/nginx.pid
+        $_nginx -s ${_cmd}
+        ;;
+
+    reload|reopen) 
+        running_assert
+        hint "${_cmd} nginx server"
         $_nginx -s ${_cmd}
         ;;
 
