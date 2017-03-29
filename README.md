@@ -110,7 +110,7 @@ Initialize the configurations and get the certificate:
     docker run --rm -t -v <local-dir>:/data \
         -p 80:80 -p 443:443 \
         aquaron/anle \
-            init <email> <hostname>
+            init <hostname> <email>
 
 ### Edit `443.conf`
 

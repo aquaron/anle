@@ -72,7 +72,6 @@ run_init() {
 
     cp -R /data-default/. /data/
     cp /etc/nginx/mime.types /data/etc/conf.d
-    cp /etc/nginx/dhparam.pem /data/etc/conf.d
     mkdir /data/log
     ln -s /data/letsencrypt /etc/letsencrypt
     rm -r /data/bin /data/templ
