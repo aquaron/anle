@@ -181,6 +181,4 @@ esac
 
 check_server "${_domain}" "${_npath}"
 
-chown -R paul ${_ledir}
-
 exit 0
