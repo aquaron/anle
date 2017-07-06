@@ -44,11 +44,13 @@ if [ "$(systemctl is-enabled ${_service} 2>&1)" = "enabled" ]; then
 fi
 
 while true; do
-    read -p "Install systemd ${_service}? " yn
+    read -p "Install systemd startup file? " yn
     case $yn in
         [Yy]* ) 
             systemctl enable ${_file}
             systemctl daemon-reload
+            echo "Test service run:\n\$ systemctl start ${_service}\n"
+
             exit 0
             ;;
         * ) exit 1
