@@ -71,7 +71,7 @@ run_init() {
     "
 
     cp -R /data-default/. /data/
-    cp /etc/nginx/mime.types /data/etc/
+    cp /etc/nginx/mime.types /data/etc/conf.d
     mkdir /data/log
     ln -s /data/letsencrypt /etc/letsencrypt
     rm -r /data/bin /data/templ
@@ -88,7 +88,7 @@ write_443_conf() {
     }
 
     server {
-        listen                      443 ssl;
+        listen                      443 ssl http2;
         server_name                 ${_hostname};
         ssl_certificate             /data/letsencrypt/live/${_hostname}/fullchain.pem;
         ssl_certificate_key         /data/letsencrypt/live/${_hostname}/privkey.pem;
@@ -119,12 +119,8 @@ write_systemd_file() {
 
     echo "Created ${_service_file}"
 
-    cat /data-default/templ/install.sh \
-        | $_writer name \""${_name}"\" \
-        > ${_script}
-
+    cp /data-default/templ/install.sh ${_script}
     chmod 755 ${_script}
-
     echo "Created ${_script}"
 
     apk del bash
@@ -181,6 +177,8 @@ run_certbot() {
         exit 1
     fi
 
+    apk --no-cache add certbot
+
     certbot certonly \
         --webroot \
         --webroot-path ${_datadir}/html \
@@ -191,6 +189,7 @@ run_certbot() {
         --manual-public-ip-logging-ok \
         --non-interactive \
         --must-staple \
+        --staple-ocsp \
         --keep \
         -d ${_host}
 
@@ -206,10 +205,16 @@ run_certbot() {
             write_80_conf "${_confdir}/80.conf"
         fi
     fi
+
+    apk del certbot
 }
 
 run_certbot_renew() {
+    apk --no-cache add certbot
+
     certbot renew \
+        --must-staple \
+        --staple-ocsp \
         --webroot-path ${_datadir}/html \
         --config-dir ${_datadir}/letsencrypt \
         --non-interactive 
@@ -226,6 +231,7 @@ run_certbot_renew() {
             write_80_conf "${_confdir}/80.conf"
         fi
     fi
+    apk del certbot
 }
 
 conf_assert() {
@@ -301,7 +307,14 @@ case "${_cmd}" in
         $_nginx -g 'daemon off;'
         ;;
 
-    stop|quit|reload|reopen) 
+    stop|quit) 
+        running_assert
+        hint "${_cmd} nginx server"
+        rm -f ${_datadir}/log/nginx.pid
+        $_nginx -s ${_cmd}
+        ;;
+
+    reload|reopen) 
         running_assert
         hint "${_cmd} nginx server"
         $_nginx -s ${_cmd}
