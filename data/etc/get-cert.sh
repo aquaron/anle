@@ -30,18 +30,17 @@ function stop_server() {
     local _is_running=$(curl -s "http://${_hostname}" | grep '<html')
 
     if [ "${_is_running}" ]; then
-        local _systemd="/etc/systemd/system/docker-anle.service"
- 
-        if [ ! -s "${_systemd}" ]; then
+
+        if [ "$(systemctl is-enabled ${_service} 2>&1)" = "enabled" ]; then
+            echo "Found: ${_service} OK"
+        else
             hint "ANLE systemd service not found!"
             echo "ABORT: Please install ANLE with systemd service to continue"
             exit 1
         fi
- 
-        echo "Found: ${_systemd} OK"
- 
+
         systemctl stop docker-anle.service
- 
+
         echo "Service $(bd docker-anle.service) stopped"
     fi
 }
@@ -88,6 +87,11 @@ function check_server() {
     fi
 }
 
+if [ ! -f "docker-anle.service" ]; then
+    echo "ABORT: Cannot find docker-anle.service in current dir"
+    exit 1
+fi
+
 _path="$2"
 
 if [ ! -d "${_path}" ]; then
@@ -113,7 +117,7 @@ if [ -d "${_npath}" ]; then
             exit 0
             ;;
 
-        *) 
+        *)
             echo "ABORT: You need to figure out why it's there and remove it"
             exit 1
             ;;
@@ -147,11 +151,11 @@ stop_server "${_domain}"
 
 echo "Running certbot client..."
 
-_args=$(grep 'ExecStart=' /etc/systemd/system/docker-anle.service | sed -e 's/^[^:]*://')
+_args=$(grep 'ExecStart=' docker-anle.service | sed -e 's/^[^:]*://')
 
 if [ ! "${_email}" ]; then
     _res=$(docker run --rm -t -v ${_npath}:${_args} renew)
-else 
+else
     _res=$(docker run --rm -t -v ${_npath}:${_args} init ${_domain} ${_email})
 fi
 
