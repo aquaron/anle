@@ -28,7 +28,9 @@ else
     esac
 fi
 
-_file="${_cwd}/${_service}"
+_orig_file="${_cwd}/${_service}"
+_file="/lib/systemd/system/${_service}"
+cp ${_orig_file} ${_file}
 
 if [ ! -f "${_file}" ]; then
     echo "${_file}: does not exist"
