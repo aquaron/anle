@@ -2,7 +2,8 @@
 
 HELP=`cat <<EOT
 Usage: sudo $0 <hostname> [<path>] [<email>]
-EOT`
+EOT
+`
 
 if [[ ! "$(whoami)" = "root" ]] || [[ $# -lt 1 ]]; then echo "$HELP"; exit 1; fi
 

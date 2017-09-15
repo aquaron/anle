@@ -1,10 +1,9 @@
 #!/bin/sh
 
-getvol() { echo $(grep ' /data ' /proc/self/mountinfo | cut -f 4 -d" "); }
-_vol=$(getvol)
+_vol="$(grep ' /data ' /proc/self/mountinfo | cut -f 4,9 -d" " | sed -e 's/^\([^ ]\+\)[ ]\+\([^ ]\+\)$/\2\1/')"
 _ports="-p 80:80 -p 443:443"
 
-if [ ! "${_vol}" ]; then 
+if [ ! "${_vol}" ]; then
     echo "ERROR: you need run Docker with the -v parameter, try:"
     echo "    \$ docker run --rm -v /tmp:/data aquaron/anle help"
     exit 1
@@ -39,9 +38,7 @@ hint() {
     local stripped="${hint//${bold}}"
     stripped="${stripped//${normal}}"
     local edge=$(echo "$stripped" | sed -e 's/./-/g' -e 's/^./+/' -e 's/.$/+/')
-    echo "$edge"
-    echo "$hint"
-    echo "$edge"
+    echo -e "$edge\n$hint\n$edge"
 }
 
 _cmd=$1
@@ -54,7 +51,8 @@ _start="docker run -v ${_vol}:/data ${_ports} -d aquaron/anle"
 _nginx="nginx -c ${_conffile}"
 
 run_init() {
-    if [ ! -d "${_datadir}/etc" ]; then
+    [[ -d "${_datadir}/etc" ]] && return 0
+
     hint "Getting Started"
     echo "
      1) Initialize the server
@@ -75,7 +73,32 @@ run_init() {
     mkdir /data/log
     ln -s /data/letsencrypt /etc/letsencrypt
     rm -r /data/bin /data/templ
-    fi
+}
+
+write_systemd_file() {
+    local _name="$1"
+    local _map="$2"
+    local _port="$3"
+    local _etc="${_datadir}/etc"
+
+    local _service_file="${_etc}/docker-${_name}.service"
+    local _script="${_etc}/install-systemd.sh"
+    local _template_file="/data-default/templ/systemd.service"
+
+    local _writer="/data-default/bin/write_template.sh"
+
+    apk --no-cache -q add bash
+
+    echo "$(${_writer} ${_template_file} name \""${_name}"\" map \""${_map}"\" port \""${_port}"\" image \""${_image}"\")" \
+        > ${_service_file}
+
+    echo "Created ${_service_file}"
+
+    cp /data-default/templ/install.sh ${_script}
+    chmod 755 ${_script}
+    echo "Created ${_script}"
+
+    apk --no-cache --purge -q del bash
 }
 
 write_443_conf() {
@@ -98,32 +121,6 @@ write_443_conf() {
         add_header                  Strict-Transport-Security
                                     'max-age=15768000; includeSubDomains; preload';
     }" > ${_filename}
-}
-
-write_systemd_file() {
-    local _name="$1"
-    local _map="$2"
-    local _port="$3"
-    local _etc="${_datadir}/etc"
-
-    local _service_file="${_etc}/docker-${_name}.service"
-    local _script="${_etc}/install-systemd.sh"
-
-    local _writer="/data-default/bin/write_template.sh"
-
-    apk --no-cache add bash
-
-    cat /data-default/templ/systemd.service \
-        | $_writer name \""${_name}"\" map \""${_map}"\" port \""${_port}"\" \
-        > ${_service_file}
-
-    echo "Created ${_service_file}"
-
-    cp /data-default/templ/install.sh ${_script}
-    chmod 755 ${_script}
-    echo "Created ${_script}"
-
-    apk del bash
 }
 
 write_test_conf() {
@@ -172,52 +169,37 @@ stopped_assert() {
 }
 
 run_certbot() {
-    if [ ! "${_email}" ]; then
+    local _type="$1"
+
+    if [[ ! "${_email}" ]] && [[ "$_type" != "renew" ]]; then
         hint "Email REQUIRED"
         exit 1
     fi
 
-    apk --no-cache add certbot
+    apk -q --no-cache add certbot
 
-    certbot certonly \
-        --webroot \
-        --webroot-path ${_datadir}/html \
-        --config-dir ${_datadir}/letsencrypt \
-        --no-self-upgrade \
-        --agree-tos \
-        --email ${_email} \
-        --manual-public-ip-logging-ok \
-        --non-interactive \
-        --must-staple \
-        --staple-ocsp \
-        --keep \
-        -d ${_host}
-
-    if [ "$?" = 1 ]; then
-        hint "Certificate FAILED"
-        echo "Check your configuration at ${_vol}/etc"            
+    if [ "$_type" = "renew" ]; then
+        certbot renew \
+            --must-staple \
+            --staple-ocsp \
+            --webroot-path ${_datadir}/html \
+            --config-dir ${_datadir}/letsencrypt \
+            --non-interactive
     else
-        _443conf="${_confdir}/443.conf"
-
-        if [ ! -s "${_443conf}" ]; then
-            write_443_conf "${_443conf}" ${_host}
-            rm ${_confdir}/test.conf
-            write_80_conf "${_confdir}/80.conf"
-        fi
+        certbot certonly \
+            --webroot \
+            --webroot-path ${_datadir}/html \
+            --config-dir ${_datadir}/letsencrypt \
+            --no-self-upgrade \
+            --agree-tos \
+            --email ${_email} \
+            --manual-public-ip-logging-ok \
+            --non-interactive \
+            --must-staple \
+            --staple-ocsp \
+            --keep \
+            -d ${_host}
     fi
-
-    apk del certbot
-}
-
-run_certbot_renew() {
-    apk --no-cache add certbot
-
-    certbot renew \
-        --must-staple \
-        --staple-ocsp \
-        --webroot-path ${_datadir}/html \
-        --config-dir ${_datadir}/letsencrypt \
-        --non-interactive 
 
     if [ "$?" = 1 ]; then
         hint "Certificate FAILED"
@@ -231,7 +213,8 @@ run_certbot_renew() {
             write_80_conf "${_confdir}/80.conf"
         fi
     fi
-    apk del certbot
+
+    apk del -q --no-cache --purge certbot
 }
 
 conf_assert() {
@@ -248,7 +231,7 @@ assert_ok() {
 }
 
 case "${_cmd}" in
-    init | renew)
+    test-init|init|renew)
         run_init
 
         if [ "${_cmd}" = 'init' ]; then host_assert; fi
@@ -263,38 +246,42 @@ case "${_cmd}" in
         hint "Initializing ${_host}"
 
         echo "Writing configuration..."
-        write_test_conf "${_confdir}/test.conf" ${_host}
+        write_test_conf "${_confdir}/test.conf"
 
         echo "Writing startup script..."
-        write_systemd_file "anle" "-v ${_vol}:/data" "${_ports}" 
+        write_systemd_file ${HOSTNAME} "-v ${_vol}:/data" "${_ports}"
 
         echo "Test configuration..."
         $_nginx -t
 
         assert_ok
-        
+
         echo "Starting nginx..."
         $_nginx
 
         assert_ok
 
-        echo "Getting LE certificate..."
-        if [ "${_cmd}" = 'init' ]; then
-            run_certbot
+        if [ "${_cmd}" = "test-init" ]; then
+            echo "Skip getting LE certificate"
         else
-            run_certbot_renew
+            echo "Getting LE certificate..."
+            if [ "${_cmd}" = 'init' ]; then
+                run_certbot
+            else
+                run_certbot "renew"
+            fi
         fi
 
         hint "${_start}"
         ;;
 
-    certbot) 
+    certbot)
         host_assert
         running_assert
         run_certbot
         ;;
 
-    start) 
+    start)
         stopped_assert
         conf_assert
         hint "starting nginx server"
@@ -307,14 +294,14 @@ case "${_cmd}" in
         $_nginx -g 'daemon off;'
         ;;
 
-    stop|quit) 
+    stop|quit)
         running_assert
         hint "${_cmd} nginx server"
-        rm -f ${_datadir}/log/nginx.pid
         $_nginx -s ${_cmd}
+        rm -f ${_datadir}/log/nginx.pid
         ;;
 
-    reload|reopen) 
+    reload|reopen)
         running_assert
         hint "${_cmd} nginx server"
         $_nginx -s ${_cmd}
@@ -329,7 +316,7 @@ case "${_cmd}" in
         hint "Test ${_vol}/etc/nginx.conf"
         $_nginx -t
         ;;
-     
+
     *) echo "ERROR: Command '${_cmd}' not recognized"
         ;;
 esac
